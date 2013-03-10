@@ -10,7 +10,7 @@ import android.view.View.OnClickListener;
 import android.widget.TextView;
 
 /**
- * Tests the test button.  Must implement content providers.
+ * Tests the test button.  Must implement content providers. Implement chord.
  * @author delvecchio
  *
  */
