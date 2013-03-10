@@ -9,6 +9,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.TextView;
 
+/**
+ * Tests the test button
+ * @author delvecchio
+ *
+ */
 public class OnTestClickListener implements OnClickListener {
 
     private static final String TAG = OnTestClickListener.class.getName();
