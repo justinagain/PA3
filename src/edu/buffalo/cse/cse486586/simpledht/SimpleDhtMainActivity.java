@@ -8,7 +8,9 @@ import android.widget.TextView;
 
 public class SimpleDhtMainActivity extends Activity {
 
-    @Override
+    public static final String TAG = "SimpleDhtInfo: ";
+
+	@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_simple_dht_main);
