@@ -67,7 +67,8 @@ public class SimpleDhtProvider extends ContentProvider {
 	}
 
 	private void broadCastJoin() {
-    	Log.v(SimpleDhtMainActivity.TAG, "Need to join the network.");		
+    	Log.v(SimpleDhtMainActivity.TAG, "Need to join the network.");	
+    	DhtMessage joinMessage = DhtMessage.getJoinMessage(port);
 	}
 
 	private void setLeaderStatus() {
