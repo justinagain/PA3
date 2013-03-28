@@ -50,8 +50,20 @@ public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 				DhtMessage dm = DhtMessage.createMessageFromByteArray(data);
 				if(dm.isJoinRequest()){
 					Log.v(TAG, "A join request has been received.");
-					Log.v(TAG, "Recevied from " + dm.getAvd());
+					Log.v(TAG, "Recevied from " + dm.getAvdOne());
 					sdp.processJoinRequest(dm);
+				}
+				else if(dm.isJoinResponse() && ! sdp.isLeader()){
+					Log.v(TAG, "A join response has been received.");
+					sdp.processJoinResponse(dm);
+				}
+				else if(dm.isJoinSuccesorResponse() && ! sdp.isLeader()){
+					Log.v(TAG, "A join successor response has been received.");
+					sdp.processJoinSuccessorResponse(dm);
+				}
+				else if(dm.isJoinPredecessorResponse() && ! sdp.isLeader()){
+					Log.v(TAG, "A join request has been received.");
+					sdp.processJoinPredecessorResponse(dm);
 				}
 				socket.close();
 			}

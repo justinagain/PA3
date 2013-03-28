@@ -48,14 +48,14 @@ public class Util {
 
 	public static int getPortNumber(String avd) {
 		int port = 0;
-		if(avd.equals(Constants.AVD0)){
+		if(avd.equals(Constants.AVD0_PORT)){
 			port = Integer.parseInt(Constants.AVD0_REDIRECT_PORT);
 		}
-		else if(avd.equals(Constants.AVD1)){
+		else if(avd.equals(Constants.AVD1_PORT)){
 			port = Integer.parseInt(Constants.AVD1_REDIRECT_PORT);			
 		}
-		else if(avd.equals(Constants.AVD2)){
-			port = Integer.parseInt(Constants.AVD1_REDIRECT_PORT);						
+		else if(avd.equals(Constants.AVD2_PORT)){
+			port = Integer.parseInt(Constants.AVD2_REDIRECT_PORT);						
 		}
 		return port;
 	}

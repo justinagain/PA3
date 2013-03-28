@@ -24,6 +24,11 @@ public class SimpleDhtProvider extends ContentProvider {
 	private String port;
 	private boolean isLeader = false;
 	private TreeMap<String, Object> nodeMap = new TreeMap<String, Object>();
+	private DhtMessage joinedMessage;
+	
+	public boolean isLeader(){
+		return isLeader;
+	}
 	
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
@@ -118,37 +123,60 @@ public class SimpleDhtProvider extends ContentProvider {
 
 	public void processJoinRequest(DhtMessage dm) {
 		try {
-			String hash = genHash(dm.getAvd());
-			nodeMap.put(hash, dm.getAvd());
-			String predecessor = nodeMap.lowerKey(hash);
-			if(predecessor == null){
-				predecessor = nodeMap.lastKey();
-			}
-			String successor = nodeMap.higherKey(hash);
-			if(successor == null){
-				successor = nodeMap.firstKey();
-			}
-			// 1. Tell the inserted node how to update
+
+			Log.v(SimpleDhtMainActivity.TAG, "Creating join request responses");
+			String hash = genHash(dm.getAvdOne());
+			nodeMap.put(hash, dm.getAvdOne());
 			
-			// 2. Tell the predecessor and successor nodes to update when applicable
-			if(! predecessor.equals(Constants.AVD0_PORT)){
-				// Contact the predecessor as long as not the leader
+			String predecessorHash = nodeMap.lowerKey(hash);
+			if(predecessorHash == null){
+				predecessorHash = nodeMap.lastKey();
 			}
-			else if(! successor.equals(Constants.AVD0_PORT)){
-				// Contact the successor as long as not the leader
-			}			
+			String predecessor = (String)nodeMap.get(predecessorHash);
+			// If happens to be the first key, cycle to create the ring
+			String successorHash = nodeMap.higherKey(hash);
+			if(successorHash == null){
+				successorHash = nodeMap.firstKey();
+			}
+			String successor = (String)nodeMap.get(successorHash);
+			
+			Log.v(SimpleDhtMainActivity.TAG, "Created a DhtJoinResponseClientTask");
+			Log.v(SimpleDhtMainActivity.TAG, "Predecessor: " + predecessor);
+			Log.v(SimpleDhtMainActivity.TAG, "InsertNode: " + dm.getAvdOne());
+			Log.v(SimpleDhtMainActivity.TAG, "Successor: " + successor);
+			DhtMessage one = DhtMessage.getJoinResponseMessage(predecessor, dm.getAvdOne(), successor, DhtMessage.RESPONSE_PREDECESSOR_JOIN);
+			Log.v(SimpleDhtMainActivity.TAG, "one Predecessor: " + one.getAvdOne());
+			Log.v(SimpleDhtMainActivity.TAG, "one InsertNode: " + one.getAvdTwo());
+			Log.v(SimpleDhtMainActivity.TAG, "one Successor: " + one.getAvdThree());
+			
+			DhtMessage two = DhtMessage.getJoinResponseMessage(predecessor, dm.getAvdOne(), successor, DhtMessage.RESPONSE_JOIN);
+			Log.v(SimpleDhtMainActivity.TAG, "two Predecessor: " + two.getAvdOne());
+			Log.v(SimpleDhtMainActivity.TAG, "two InsertNode: " + two.getAvdTwo());
+			Log.v(SimpleDhtMainActivity.TAG, "two Successor: " + two.getAvdThree());
+			
+			DhtMessage three = DhtMessage.getJoinResponseMessage(predecessor, dm.getAvdOne(), successor, DhtMessage.RESPONSE_SUCCESSOR_JOIN);			
+			Log.v(SimpleDhtMainActivity.TAG, "three Predecessor: " + three.getAvdOne());
+			Log.v(SimpleDhtMainActivity.TAG, "three InsertNode: " + three.getAvdTwo());
+			Log.v(SimpleDhtMainActivity.TAG, "three Successor: " + three.getAvdThree());
+
+			new DhtJoinResponseClientTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, one, two, three); 
 		} catch (NoSuchAlgorithmException e) {
 			Log.v(SimpleDhtMainActivity.TAG, "Error trying to place request in nodemap in processJoinRequest");
 			e.printStackTrace();
 		}
 	}
-    
-    
- /*
- * Map<String, Object> map = new TreeMap<String, Object>();
-/*for (Map.Entry<String, ?> entry : map.entrySet()) {
-/*  System.out.println(entry.getKey() + ": " + entry.getValue());
-/*}
-     */
 
+	public void processJoinResponse(DhtMessage dm) {
+		joinedMessage = dm;
+	}
+
+	public void processJoinSuccessorResponse(DhtMessage dm) {
+		//Give the node a new predecessor
+		joinedMessage.setAvd(dm.getAvdTwo(), DhtMessage.AVD_INSERT_PT_ONE);
+	}
+
+	public void processJoinPredecessorResponse(DhtMessage dm) {
+		// Give the node a new successor
+		joinedMessage.setAvd(dm.getAvdTwo(), DhtMessage.AVD_INSERT_PT_THREE);		
+	}    
 }

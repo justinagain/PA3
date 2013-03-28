@@ -3,9 +3,14 @@ package edu.buffalo.cse.cse486586.simpledht;
 public class DhtMessage {
 	
 	public static final String REQUEST_JOIN = "j";
+	public static final String RESPONSE_JOIN = "r";
+	public static final String RESPONSE_PREDECESSOR_JOIN = "p";
+	public static final String RESPONSE_SUCCESSOR_JOIN = "s";
 	public static final String QUERY = "q";
 	public static final String INSERT = "i";
-	private static final int AVD_INSERT_PT = 1;
+	public static final int AVD_INSERT_PT_ONE = 1;
+	public static final int AVD_INSERT_PT_TWO = 5;
+	public static final int AVD_INSERT_PT_THREE = 9;
 //	public static final String TEST_TWO_BROADCAST = "c";
 //	private static final int MSG_SIZE_INSERT_PT = 11;
 //	private static final int MSG_INSERT_PT = 14;
@@ -46,7 +51,7 @@ public class DhtMessage {
 	/** Factory methods to create specific message types */
 	public static DhtMessage getJoinMessage(String port){
 		DhtMessage dhtMessage = new DhtMessage(REQUEST_JOIN);
-		dhtMessage.setAvd(port);
+		dhtMessage.setAvd(port, AVD_INSERT_PT_ONE);
 		return dhtMessage;
 	}
 	
@@ -60,12 +65,14 @@ public class DhtMessage {
 		return dhtMessage;		
 	}
 	
-	public void setAvd(String avdNumber){ 
-		reinitializeArray(AVD_INSERT_PT, 4);
-		insertTextPayloadContent(avdNumber, AVD_INSERT_PT);
+	public void setAvd(String avdNumber, int insertionPoint){ 
+		reinitializeArray(insertionPoint, 4);
+		insertTextPayloadContent(avdNumber, insertionPoint);
 	}
 	
-	public String getAvd(){ return new String(getPayloadAsString(4, AVD_INSERT_PT));}
+	public String getAvdOne(){ return new String(getPayloadAsString(4, AVD_INSERT_PT_ONE));}
+	public String getAvdTwo(){ return new String(getPayloadAsString(4, AVD_INSERT_PT_TWO));}
+	public String getAvdThree(){ return new String(getPayloadAsString(4, AVD_INSERT_PT_THREE));}
 
 	private byte[] getPayloadAsString(int size, int startPoint) {
 		byte[] avdBytes = new byte[size];
@@ -85,6 +92,9 @@ public class DhtMessage {
 	}
 
 	public boolean isJoinRequest(){ return determineType(REQUEST_JOIN); }
+	public boolean isJoinResponse(){ return determineType(RESPONSE_JOIN); }
+	public boolean isJoinPredecessorResponse(){ return determineType(RESPONSE_PREDECESSOR_JOIN); }
+	public boolean isJoinSuccesorResponse(){ return determineType(RESPONSE_SUCCESSOR_JOIN); }
 	
 	private boolean determineType(String type) {
 		String byteValue = new String(new byte[]{payload[0]});
@@ -93,6 +103,14 @@ public class DhtMessage {
 			isRequestType = true;
 		}
 		return isRequestType;
+	}
+
+	public static DhtMessage getJoinResponseMessage(String predecessor, String insertNode, String successor, String responseType) {
+		DhtMessage dhtMessage = new DhtMessage(responseType);
+		dhtMessage.setAvd(predecessor,DhtMessage.AVD_INSERT_PT_ONE);
+		dhtMessage.setAvd(insertNode,DhtMessage.AVD_INSERT_PT_TWO);
+		dhtMessage.setAvd(successor,DhtMessage.AVD_INSERT_PT_THREE);
+		return dhtMessage;
 	}
 
 }
