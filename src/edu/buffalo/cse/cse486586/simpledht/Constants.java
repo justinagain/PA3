@@ -21,5 +21,5 @@ public class Constants {
 	final public static String[] AVD2_REMOTE_CLIENTS = new String[]{"11108", "11112"};
 
 	final public static int[] AVD_REMOTE_CLIENTS = new int[]{11108, 11112, 11116};
-	public static final int SEQUENCER = 11108;
+	public static final int DHT_MASTER = 11108;
 }

@@ -5,9 +5,8 @@ public class DhtMessage {
 	public static final String REQUEST_JOIN = "j";
 	public static final String QUERY = "q";
 	public static final String INSERT = "i";
+	private static final int AVD_INSERT_PT = 1;
 //	public static final String TEST_TWO_BROADCAST = "c";
-//	private static final int AVD_INSERT_PT = 1;
-//	private static final int AVD_SEQUENCE_NUMBER_INSERT_PT = 5;
 //	private static final int MSG_SIZE_INSERT_PT = 11;
 //	private static final int MSG_INSERT_PT = 14;
 	private static final byte ARRAY_INITIALIZER = "z".getBytes()[0];
@@ -41,9 +40,13 @@ public class DhtMessage {
 		}		
 	}
 	
+	public byte[] getPayload(){ return payload;}
+
+	
 	/** Factory methods to create specific message types */
 	public static DhtMessage getJoinMessage(String port){
 		DhtMessage dhtMessage = new DhtMessage(REQUEST_JOIN);
+		dhtMessage.setAvd(port);
 		return dhtMessage;
 	}
 	
@@ -56,6 +59,40 @@ public class DhtMessage {
 		DhtMessage dhtMessage = new DhtMessage(INSERT);
 		return dhtMessage;		
 	}
+	
+	public void setAvd(String avdNumber){ 
+		reinitializeArray(AVD_INSERT_PT, 4);
+		insertTextPayloadContent(avdNumber, AVD_INSERT_PT);
+	}
+	
+	public String getAvd(){ return new String(getPayloadAsString(4, AVD_INSERT_PT));}
 
+	private byte[] getPayloadAsString(int size, int startPoint) {
+		byte[] avdBytes = new byte[size];
+		for (int i = 0; i < avdBytes.length; i++) {
+			avdBytes[i] = payload[startPoint];
+			startPoint++;
+		}
+		return avdBytes;
+	}
+	
+	private void insertTextPayloadContent(String value, int insertPoint) {
+		byte[] stringBytes = value.getBytes();
+		for (int i = 0; i < value.length(); i++) {
+			payload[insertPoint] = stringBytes[i];
+			insertPoint = insertPoint + 1;
+		}
+	}
+
+	public boolean isJoinRequest(){ return determineType(REQUEST_JOIN); }
+	
+	private boolean determineType(String type) {
+		String byteValue = new String(new byte[]{payload[0]});
+		boolean isRequestType = false;
+		if(byteValue.equals(type)){
+			isRequestType = true;
+		}
+		return isRequestType;
+	}
 
 }
