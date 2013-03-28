@@ -24,6 +24,12 @@ import android.widget.TextView;
 public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 
 	private static final String TAG = ServerTask.class.getName();
+	private SimpleDhtProvider sdp;
+	
+	
+	public ServerTask(SimpleDhtProvider newSdp){
+		sdp = newSdp;
+	}
 	
 	@Override
 	protected Void doInBackground(ServerSocket... sockets) {
@@ -41,12 +47,13 @@ public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 				byte[] data = new byte[DhtMessage.MSG_SIZE];
 				int count = stream.read(data);				
 				Log.v(TAG, "Message recieved with bytes: " + count);
-				DhtMessage bm = DhtMessage.createMessageFromByteArray(data);
-				if(bm.isJoinRequest()){
+				DhtMessage dm = DhtMessage.createMessageFromByteArray(data);
+				if(dm.isJoinRequest()){
 					Log.v(TAG, "A join request has been received.");
-					Log.v(TAG, "Recevied from " + bm.getAvd());
-					//processBroadcastRequest(bm, BroadcastMessage.BROADCAST);
+					Log.v(TAG, "Recevied from " + dm.getAvd());
+					sdp.processJoinRequest(dm);
 				}
+				socket.close();
 			}
 		}
 //				else if(bm.isBroadcast()){

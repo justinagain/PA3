@@ -6,6 +6,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Formatter;
+import java.util.Map;
+import java.util.TreeMap;
+
 import android.app.Application;
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -20,9 +23,7 @@ public class SimpleDhtProvider extends ContentProvider {
 
 	private String port;
 	private boolean isLeader = false;
-	private String predecessor;
-	private String successor;
-	private ArrayList<String> ring = new ArrayList<String>();
+	private TreeMap<String, Object> nodeMap = new TreeMap<String, Object>();
 	
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
@@ -52,13 +53,21 @@ public class SimpleDhtProvider extends ContentProvider {
     	if(! isLeader){
     		broadCastJoin();
     	}
+    	else{
+    		try {
+				nodeMap.put(genHash(port), port);
+			} catch (NoSuchAlgorithmException e) {
+				Log.v(SimpleDhtMainActivity.TAG, "Exception adding to nodemap.");
+				e.printStackTrace();
+			}
+    	}
     	return false;
     }
 
 	private void createServer() {
 		try{
 			ServerSocket serverSocket = new ServerSocket(10000);
-			new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
+			new ServerTask(this).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
 		}
 		catch(IOException e){
 			Log.v(SimpleDhtMainActivity.TAG, "Exception creating ServerSocket");
@@ -106,4 +115,40 @@ public class SimpleDhtProvider extends ContentProvider {
         }
         return formatter.toString();
     }
+
+	public void processJoinRequest(DhtMessage dm) {
+		try {
+			String hash = genHash(dm.getAvd());
+			nodeMap.put(hash, dm.getAvd());
+			String predecessor = nodeMap.lowerKey(hash);
+			if(predecessor == null){
+				predecessor = nodeMap.lastKey();
+			}
+			String successor = nodeMap.higherKey(hash);
+			if(successor == null){
+				successor = nodeMap.firstKey();
+			}
+			// 1. Tell the inserted node how to update
+			
+			// 2. Tell the predecessor and successor nodes to update when applicable
+			if(! predecessor.equals(Constants.AVD0_PORT)){
+				// Contact the predecessor as long as not the leader
+			}
+			else if(! successor.equals(Constants.AVD0_PORT)){
+				// Contact the successor as long as not the leader
+			}			
+		} catch (NoSuchAlgorithmException e) {
+			Log.v(SimpleDhtMainActivity.TAG, "Error trying to place request in nodemap in processJoinRequest");
+			e.printStackTrace();
+		}
+	}
+    
+    
+ /*
+ * Map<String, Object> map = new TreeMap<String, Object>();
+/*for (Map.Entry<String, ?> entry : map.entrySet()) {
+/*  System.out.println(entry.getKey() + ": " + entry.getValue());
+/*}
+     */
+
 }
