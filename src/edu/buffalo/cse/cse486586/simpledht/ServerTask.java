@@ -53,15 +53,15 @@ public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 					Log.v(TAG, "Recevied from " + dm.getAvdOne());
 					sdp.processJoinRequest(dm);
 				}
-				else if(dm.isJoinResponse() && ! sdp.isLeader()){
+				else if(dm.isJoinResponse()){
 					Log.v(TAG, "A join response has been received.");
 					sdp.processJoinResponse(dm);
 				}
-				else if(dm.isJoinSuccesorResponse() && ! sdp.isLeader()){
+				else if(dm.isJoinSuccesorResponse()){
 					Log.v(TAG, "A join successor response has been received.");
 					sdp.processJoinSuccessorResponse(dm);
 				}
-				else if(dm.isJoinPredecessorResponse() && ! sdp.isLeader()){
+				else if(dm.isJoinPredecessorResponse()){
 					Log.v(TAG, "A join request has been received.");
 					sdp.processJoinPredecessorResponse(dm);
 				}

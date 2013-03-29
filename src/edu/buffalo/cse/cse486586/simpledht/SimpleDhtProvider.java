@@ -1,5 +1,8 @@
 package edu.buffalo.cse.cse486586.simpledht;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.security.MessageDigest;
@@ -9,11 +12,13 @@ import java.util.Formatter;
 import java.util.Map;
 import java.util.TreeMap;
 
+
 import android.app.Application;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.telephony.TelephonyManager;
@@ -21,10 +26,13 @@ import android.util.Log;
 
 public class SimpleDhtProvider extends ContentProvider {
 
+	public static final String TAG = SimpleDhtProvider.class.getName();
 	private String port;
 	private boolean isLeader = false;
 	private TreeMap<String, Object> nodeMap = new TreeMap<String, Object>();
-	private DhtMessage joinedMessage;
+	private TreeMap<String, Object> keyValueMap = new TreeMap<String, Object>();
+	private DhtMessage joinedMessage = DhtMessage.getDefaultMessage();
+
 	
 	public boolean isLeader(){
 		return isLeader;
@@ -44,10 +52,79 @@ public class SimpleDhtProvider extends ContentProvider {
     }
 
     @Override
-    public Uri insert(Uri uri, ContentValues values) {
+    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         // TODO Auto-generated method stub
-        return null;
+        return 0;
     }
+    
+    @Override
+    public Uri insert(Uri groupMessengerUri, ContentValues contentValues) {
+		Log.v(TAG, "About to insert into content provider with URI: " + groupMessengerUri.toString());
+        writeToInternalStorage(groupMessengerUri, contentValues);
+        getContext().getContentResolver().notifyChange(groupMessengerUri, null);
+		return groupMessengerUri;
+    }
+    
+	private boolean writeToInternalStorage(Uri uri, ContentValues contentValues){
+		boolean success = false;
+		FileOutputStream fos;
+		try {
+			Log.v(TAG, "About to insert into a speicific file");
+			keyValueMap.clear();
+			String keyValue = contentValues.get(OnTestClickListener.KEY_FIELD).toString();
+			String contentValue = contentValues.get(OnTestClickListener.VALUE_FIELD).toString();
+
+			String keyHash = genHash(keyValue);
+			keyValueMap.put(keyHash, keyValue);
+			String predecessor = joinedMessage.getAvdOne();
+			String predecessorHash = genHash(predecessor);
+			keyValueMap.put(predecessorHash, predecessor);
+			String currentNode = joinedMessage.getAvdTwo();
+			String currentNodeHash = genHash(currentNode);
+			keyValueMap.put(currentNodeHash, currentNode);
+			String successor = joinedMessage.getAvdThree();
+			String successorHash = genHash(successor);
+			keyValueMap.put(successorHash, successor);
+			
+			
+			String sHash = keyValueMap.higherKey(keyHash);
+			if(sHash == null){
+				sHash = keyValueMap.firstKey();
+			}
+			
+			if(joinedMessage == null){
+				Log.v(TAG, "Serious problem.  Attempting to add to content provider when not a part of the ring ... ");				
+			}
+			else if(sHash.compareTo(predecessorHash) == 0){
+				Log.v(TAG, "I have a message that must be sent to the predecessor node " + predecessor);
+			}
+			else if(sHash.compareTo(successorHash) == 0){
+				Log.v(TAG, "I have a message that must be sent to the successor node " + successor);				
+			}
+			else{
+				Log.v(TAG, "I have a message that belongs to the current node " + currentNode);				
+				String fileName = uri.toString().replace("content://", "");
+				fileName = fileName + "_" + keyValue;
+				Log.v(TAG, "filename is: " + fileName);
+				fos = this.getContext().openFileOutput(fileName, Context.MODE_PRIVATE);
+				fos.write(contentValue.getBytes());				
+				fos.close();
+				success = true;
+				Log.v(TAG, "Wrote ContentValues successfully.");				
+			}
+		} catch (FileNotFoundException e) {
+			Log.v(TAG, "File not found when writing ContentValues");
+			e.printStackTrace();
+		} catch (IOException e) {
+			Log.v(TAG, "Some IO Exception when writing ContentValues");
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			Log.v(TAG, "Some genHash exception");
+			e.printStackTrace();
+		}
+		return success;
+	}
+
 
     @Override
     public boolean onCreate() {
@@ -55,17 +132,18 @@ public class SimpleDhtProvider extends ContentProvider {
 		setLeaderStatus();
     	Log.v(SimpleDhtMainActivity.TAG, "Set the port number and leader status.");
     	createServer();
-    	if(! isLeader){
-    		broadCastJoin();
-    	}
-    	else{
-    		try {
-				nodeMap.put(genHash(port), port);
-			} catch (NoSuchAlgorithmException e) {
-				Log.v(SimpleDhtMainActivity.TAG, "Exception adding to nodemap.");
-				e.printStackTrace();
-			}
-    	}
+    	//if(! isLeader){
+
+    	broadCastJoin();
+    	//}
+//    	else{
+//    		try {
+//				nodeMap.put(genHash(port), port);
+//			} catch (NoSuchAlgorithmException e) {
+//				Log.v(SimpleDhtMainActivity.TAG, "Exception adding to nodemap.");
+//				e.printStackTrace();
+//			}
+//    	}
     	return false;
     }
 
@@ -99,17 +177,31 @@ public class SimpleDhtProvider extends ContentProvider {
 	}
 
     @Override
-    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
-            String sortOrder) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-        // TODO Auto-generated method stub
-        return 0;
-    }
+    public Cursor query(Uri providedUri, String[] arg1, String keyValue, String[] arg3,
+			String arg4) {
+		MatrixCursor matrixCursor = new MatrixCursor(new String[]{"key", "value"});
+		try {
+			String fileName = providedUri.toString();
+			fileName = fileName + "_" + keyValue;
+			fileName = fileName.replace("content://", "");
+			FileInputStream fis = this.getContext().openFileInput(fileName);
+			Log.v(TAG, "About to read from a speicific file: " + fileName);
+			int characterIntValue;
+			String value = "";
+			while ((characterIntValue= fis.read()) != -1) {
+				value = value + (char)characterIntValue;
+			}		
+			String[] cursorRow = new String[]{keyValue, value};
+			matrixCursor.addRow(cursorRow);
+			Log.v(TAG, "Value read from file is: " + value);
+		} catch (FileNotFoundException e) {
+			Log.v(TAG, "File not found when reading ContentValues");
+			e.printStackTrace();
+		} catch (IOException e) {
+			Log.v(TAG, "Some IO Exception when reading ContentValues");
+			e.printStackTrace();
+		}
+		return matrixCursor;    }
 
     private String genHash(String input) throws NoSuchAlgorithmException {
         MessageDigest sha1 = MessageDigest.getInstance("SHA-1");

@@ -113,4 +113,8 @@ public class DhtMessage {
 		return dhtMessage;
 	}
 
+	public static DhtMessage getDefaultMessage() {
+		return new DhtMessage(REQUEST_JOIN);
+	}
+
 }
