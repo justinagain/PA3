@@ -1,5 +1,7 @@
 package edu.buffalo.cse.cse486586.simpledht;
 
+import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -32,6 +34,14 @@ public class SimpleDhtProvider extends ContentProvider {
 	private TreeMap<String, Object> nodeMap = new TreeMap<String, Object>();
 	private TreeMap<String, Object> keyValueMap = new TreeMap<String, Object>();
 	private DhtMessage joinedMessage = DhtMessage.getDefaultMessage();
+	private Uri selectAllUri;
+
+	private Uri buildUri(String scheme, String authority) {
+		Uri.Builder uriBuilder = new Uri.Builder();
+		uriBuilder.authority(authority);
+		uriBuilder.scheme(scheme);
+		return uriBuilder.build();
+	}
 
 	
 	public boolean isLeader(){
@@ -74,6 +84,7 @@ public class SimpleDhtProvider extends ContentProvider {
 			String keyValue = contentValues.get(OnTestClickListener.KEY_FIELD).toString();
 			String contentValue = contentValues.get(OnTestClickListener.VALUE_FIELD).toString();
 
+			Log.v(TAG, "keyvalue is: " + keyValue);
 			String keyHash = genHash(keyValue);
 			keyValueMap.put(keyHash, keyValue);
 			String predecessor = joinedMessage.getAvdOne();
@@ -95,10 +106,10 @@ public class SimpleDhtProvider extends ContentProvider {
 			if(joinedMessage == null){
 				Log.v(TAG, "Serious problem.  Attempting to add to content provider when not a part of the ring ... ");				
 			}
-			else if(sHash.compareTo(predecessorHash) == 0){
+			else if(sHash.compareTo(predecessorHash) == 0  && sHash.compareTo(currentNodeHash) != 0){
 				Log.v(TAG, "I have a message that must be sent to the predecessor node " + predecessor);
 			}
-			else if(sHash.compareTo(successorHash) == 0){
+			else if(sHash.compareTo(successorHash) == 0   && sHash.compareTo(currentNodeHash) != 0){
 				Log.v(TAG, "I have a message that must be sent to the successor node " + successor);				
 			}
 			else{
@@ -128,24 +139,31 @@ public class SimpleDhtProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+    	selectAllUri = buildUri("content", "edu.buffalo.cse.cse486586.simpledht.provider-ALL");
+    	cleanProvider();
     	setPortNumber();
 		setLeaderStatus();
     	Log.v(SimpleDhtMainActivity.TAG, "Set the port number and leader status.");
     	createServer();
-    	//if(! isLeader){
-
     	broadCastJoin();
-    	//}
-//    	else{
-//    		try {
-//				nodeMap.put(genHash(port), port);
-//			} catch (NoSuchAlgorithmException e) {
-//				Log.v(SimpleDhtMainActivity.TAG, "Exception adding to nodemap.");
-//				e.printStackTrace();
-//			}
-//    	}
     	return false;
     }
+
+	private void cleanProvider() {
+		File[] files = this.getContext().getFilesDir().listFiles();
+		String fileName = selectAllUri.toString();
+		fileName = fileName.replace("content://", "");
+		fileName = fileName.replace("-ALL", "");
+		for (File file : files) {
+			Log.v(TAG, "Base file is: " + fileName + " and compare name is: " + file.getName());
+			if(file.getName().startsWith(fileName)){
+				Log.v(TAG, "We have a match and must delete - it is old content.");
+				file.delete();				
+			}
+		}
+		
+	}
+
 
 	private void createServer() {
 		try{
@@ -180,26 +198,58 @@ public class SimpleDhtProvider extends ContentProvider {
     public Cursor query(Uri providedUri, String[] arg1, String keyValue, String[] arg3,
 			String arg4) {
 		MatrixCursor matrixCursor = new MatrixCursor(new String[]{"key", "value"});
-		try {
-			String fileName = providedUri.toString();
-			fileName = fileName + "_" + keyValue;
+		if(providedUri.toString().endsWith("-ALL") || keyValue.equals("ALL")){
+			File[] files = this.getContext().getFilesDir().listFiles();
+			String fileName = selectAllUri.toString();
 			fileName = fileName.replace("content://", "");
-			FileInputStream fis = this.getContext().openFileInput(fileName);
-			Log.v(TAG, "About to read from a speicific file: " + fileName);
-			int characterIntValue;
-			String value = "";
-			while ((characterIntValue= fis.read()) != -1) {
-				value = value + (char)characterIntValue;
-			}		
-			String[] cursorRow = new String[]{keyValue, value};
-			matrixCursor.addRow(cursorRow);
-			Log.v(TAG, "Value read from file is: " + value);
-		} catch (FileNotFoundException e) {
-			Log.v(TAG, "File not found when reading ContentValues");
-			e.printStackTrace();
-		} catch (IOException e) {
-			Log.v(TAG, "Some IO Exception when reading ContentValues");
-			e.printStackTrace();
+			fileName = fileName.replace("-ALL", "");
+			for (File file : files) {
+				Log.v(TAG, "Base file is: " + fileName + " and compare name is: " + file.getName());
+				if(file.getName().startsWith(fileName)){
+					Log.v(TAG, "We have a match and must delete - it is old content.");
+					try {
+						FileInputStream fis = this.getContext().openFileInput(file.getName());
+						Log.v(TAG, "About to read from a speicific file: " + file.getName());
+						int characterIntValue;
+						String value = "";
+						while ((characterIntValue= fis.read()) != -1) {
+							value = value + (char)characterIntValue;
+						}		
+						String[] cursorRow = new String[]{file.getName(), value};
+						matrixCursor.addRow(cursorRow);
+						Log.v(TAG, "Value read from file is: " + value);
+					} catch (FileNotFoundException e) {
+						Log.v(TAG, "File not found when reading ContentValues: " + file.getName());
+						e.printStackTrace();
+					} catch (IOException e) {
+						Log.v(TAG, "Some IO Exception when reading ContentValues");
+						e.printStackTrace();
+					}			
+				}
+			}			
+		}
+		else{
+			try {
+				String fileName = providedUri.toString();
+				fileName = fileName + "_" + keyValue;
+				fileName = fileName.replace("content://", "");
+				FileInputStream fis = this.getContext().openFileInput(fileName);
+				Log.v(TAG, "About to read from a speicific file: " + fileName);
+				int characterIntValue;
+				String value = "";
+				while ((characterIntValue= fis.read()) != -1) {
+					value = value + (char)characterIntValue;
+				}		
+				String[] cursorRow = new String[]{keyValue, value};
+				matrixCursor.addRow(cursorRow);
+				Log.v(TAG, "Value read from file is: " + value);
+			} catch (FileNotFoundException e) {
+				Log.v(TAG, "File not found when reading ContentValues");
+				e.printStackTrace();
+			} catch (IOException e) {
+				Log.v(TAG, "Some IO Exception when reading ContentValues");
+				e.printStackTrace();
+			}			
 		}
 		return matrixCursor;    }
 
@@ -269,6 +319,32 @@ public class SimpleDhtProvider extends ContentProvider {
 
 	public void processJoinPredecessorResponse(DhtMessage dm) {
 		// Give the node a new successor
-		joinedMessage.setAvd(dm.getAvdTwo(), DhtMessage.AVD_INSERT_PT_THREE);		
+		joinedMessage.setAvd(dm.getAvdTwo(), DhtMessage.AVD_INSERT_PT_THREE);
+		if(! joinedMessage.getAvdTwo().equals(joinedMessage.getAvdThree())){
+			Log.v(TAG, "We now must shuffle our test values");
+			Cursor resultCursor = query(selectAllUri, null, "", null, "");
+			int keyIndex = resultCursor.getColumnIndex(OnTestClickListener.KEY_FIELD);
+			int valueIndex = resultCursor.getColumnIndex(OnTestClickListener.VALUE_FIELD);
+			for (boolean hasItem = resultCursor.moveToFirst(); hasItem; hasItem = resultCursor.moveToNext()) {
+				String keyWithUri = resultCursor.getString(keyIndex);
+				String[] values = keyWithUri.split("_");
+				String key = values[1];
+				String value = resultCursor.getString(valueIndex);
+				Log.v(TAG, "Key and value are: " + key + " : " + value);
+				
+				String newSuccessorHash;
+				try {
+					newSuccessorHash = genHash(joinedMessage.getAvdThree());
+					String keyHash = genHash(key);
+					if(keyHash.compareTo(newSuccessorHash) >= 1){
+						Log.v(TAG, "We have a node that must be sent to the newsuccessor and removed from the current contentprovider");
+						this.getContext().deleteFile(keyWithUri);						
+					}
+				} catch (NoSuchAlgorithmException e) {
+					e.printStackTrace();
+				}
+				
+			}			
+		}
 	}    
 }
