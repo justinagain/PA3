@@ -4,11 +4,23 @@ import java.util.ArrayList;
 
 import android.app.Activity;
 import android.content.Context;
+import android.net.Uri;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
 public class Util {
+	
+	public static Uri providerUri;
+	
 
+	public static Uri getProviderUri() {
+		String scheme = "content"; 
+		String authority = "edu.buffalo.cse.cse486586.simpledht.provider";
+		Uri.Builder uriBuilder = new Uri.Builder();
+		uriBuilder.authority(authority);
+		uriBuilder.scheme(scheme);
+		return uriBuilder.build();
+	}
 	public static String getPortNumber(Activity activity){
 		TelephonyManager tel = (TelephonyManager) activity.getSystemService(Context.TELEPHONY_SERVICE);
 		String port = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);

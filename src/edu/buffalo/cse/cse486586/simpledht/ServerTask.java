@@ -53,42 +53,32 @@ public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 					Log.v(TAG, "Recevied from " + dm.getAvdOne());
 					sdp.processJoinRequest(dm);
 				}
-				else if(dm.isJoinResponse()){
+				else if(dm.isNewPredecessorResponse()){
+					Log.v(TAG, "A join predecessor response has been received.");
+					sdp.processNewPredecessorResponse(dm);
+				}
+				else if(dm.isNewJoinResponse()){
 					Log.v(TAG, "A join response has been received.");
-					sdp.processJoinResponse(dm);
+					sdp.processNewJoinResponse(dm);
 				}
-				else if(dm.isJoinSuccesorResponse()){
+				else if(dm.isNewSucessorResponse()){
 					Log.v(TAG, "A join successor response has been received.");
-					sdp.processJoinSuccessorResponse(dm);
+					sdp.processNewSuccessorResponse(dm);
 				}
-				else if(dm.isJoinPredecessorResponse()){
-					Log.v(TAG, "A join request has been received.");
-					sdp.processJoinPredecessorResponse(dm);
+				else if(dm.isInsertRequest()){
+					Log.v(TAG, "An insert request has been received.");
+					sdp.processInsertRequest(dm);					
+				}
+				else if(dm.isGloablPublishResponse() && ! dm.getAvdOne().equals(sdp.getCurrentNode())){
+					sdp.processGlobalDumpResponse(dm);
+					new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getGlobalDumpMessage(sdp.getSuccessorNode(), dm.getAvdTwo()));
+				}
+				else if(dm.isGloablPublishResponse() && dm.getAvdOne().equals(sdp.getCurrentNode())){
+					sdp.publishGlobalDumpResponses();
 				}
 				socket.close();
 			}
 		}
-//				else if(bm.isBroadcast()){
-//					Log.v(INFO_TAG, "A broadcast has been received.");					
-//					processBroadcastReceipt(bm);
-//				}
-//				else if(bm.isTestTwoRequestBroadcast()){
-//					Log.v(INFO_TAG, "TestTwo case has been received.");					
-//					processBroadcastRequest(bm, BroadcastMessage.TEST_TWO_BROADCAST);					
-//				}				
-//				else if(bm.isTestTwoBroadcast()){
-//					Log.v(INFO_TAG, "A TestTwo broadcast has been received.");					
-//					processBroadcastReceipt(bm);
-//					//if(bm.getAvd().equals(Util.getPortNumber(mActivity))){
-//						// Call it once
-//						createTestTwoGenericBroadcastRequest();							
-//						// Call it twice
-//						createTestTwoGenericBroadcastRequest();					
-//					//}
-//				}
-//				socket.close();
-//			}
-//		}
 		catch (IOException e){
 			Log.v(SimpleDhtMainActivity.TAG, "IOException creating ServerSocket");
 		}

@@ -12,7 +12,7 @@ import android.view.View.OnClickListener;
 import android.widget.TextView;
 
 
-public class OnLDumpClickListener implements OnClickListener {
+public class OnGDumpClickListener implements OnClickListener {
 
 	private static final String TAG = OnTestClickListener.class.getName();
 	private static final int TEST_CNT = 50;
@@ -23,7 +23,7 @@ public class OnLDumpClickListener implements OnClickListener {
 	private final ContentResolver mContentResolver;
 	private final Uri mUri;
 
-	public OnLDumpClickListener(TextView _tv, ContentResolver _cr) {
+	public OnGDumpClickListener(TextView _tv, ContentResolver _cr) {
 		mTextView = _tv;
 		mContentResolver = _cr;
 		mUri = buildUri("content", "edu.buffalo.cse.cse486586.simpledht.provider");
@@ -48,17 +48,17 @@ public class OnLDumpClickListener implements OnClickListener {
 		@Override
 		protected Void doInBackground(Void... params) {
 	    	Uri selectAllUri = buildUri("content", "edu.buffalo.cse.cse486586.simpledht.provider");
-	    	Log.v(TAG, "About to query from LDump");
-	    	Cursor resultCursor = mContentResolver.query(selectAllUri, null, SimpleDhtProvider.ALL_SELECTION_LOCAL, null, "");
+			Cursor resultCursor = mContentResolver.query(selectAllUri, null, SimpleDhtProvider.ALL_SELECTION_GLOBAL , null, "");
 			int keyIndex = resultCursor.getColumnIndex(OnTestClickListener.KEY_FIELD);
 			int valueIndex = resultCursor.getColumnIndex(OnTestClickListener.VALUE_FIELD);
-			Log.v(TAG, "About LDump the results");
+			Log.v(TAG, "About GDump");
 			for (boolean hasItem = resultCursor.moveToFirst(); hasItem; hasItem = resultCursor.moveToNext()) {
 				String key = resultCursor.getString(keyIndex);
 				String value = resultCursor.getString(valueIndex);
 				Log.v(TAG, "Key and value are: " + key + " : " + value);
 				publishProgress(key + ":" + value + "\n");
 			}
+			
 			if(firstPass){
 				publishProgress("");
 			}
