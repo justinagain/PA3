@@ -2,6 +2,7 @@ package edu.buffalo.cse.cse486586.simpledht;
 
 public class DhtMessage {
 	
+	public static final String GLOBAL_QUERY_RESPONSE = "a";
 	public static final String GLOBAL_QUERY = "g";
 	public static final String REQUEST_JOIN = "j";
 	public static final String NEW_JOIN_RESPONSE = "r";
@@ -14,6 +15,7 @@ public class DhtMessage {
 	public static final int AVD_INSERT_PT_THREE = 9;
 	public static final int KEY_INSERT_PT = 5;
 	public static final int VALUE_INSERT_PT = 11;
+	public static final int COUNT_INSERT_PT = 17;
 //	public static final String TEST_TWO_BROADCAST = "c";
 //	private static final int MSG_SIZE_INSERT_PT = 11;
 //	private static final int MSG_INSERT_PT = 14;
@@ -121,7 +123,8 @@ public class DhtMessage {
 	public boolean isNewPredecessorResponse(){ return determineType(NEW_PREDECESSOR_RESPONSE); }
 	public boolean isNewSucessorResponse(){ return determineType(NEW_SUCCESSOR_RESPONSE); }
 	public boolean isInsertRequest(){return determineType(INSERT);}
-	public boolean isGloablDumpRequest() {return determineType(GLOBAL_QUERY);}
+	public boolean isGlobalDumpRequest() {return determineType(GLOBAL_QUERY);}
+	public boolean isGloablDumpResponse() {return determineType(GLOBAL_QUERY_RESPONSE);}
 
 	
 	private boolean determineType(String type) {
@@ -153,12 +156,32 @@ public class DhtMessage {
 		return dhtMessage;
 	}
 
-	public static DhtMessage getGlobalDumpMessage(String sendAvd, String requestAvd) {
+	public static DhtMessage getGlobalDumpMessage(String sendAvd, String requestAvd, int count) {
 		DhtMessage dhtMessage = new DhtMessage(GLOBAL_QUERY);
 		dhtMessage.setAvd(sendAvd, DhtMessage.AVD_INSERT_PT_ONE);
 		dhtMessage.setAvd(requestAvd, DhtMessage.AVD_INSERT_PT_TWO);
+		dhtMessage.setCount(count);
 		return dhtMessage;
 	}
 
+	public static DhtMessage getGlobalDumpResponseMessage(String sendAvd, String key, String value) {
+		DhtMessage dhtMessage = new DhtMessage(GLOBAL_QUERY_RESPONSE);
+		dhtMessage.setAvd(sendAvd, DhtMessage.AVD_INSERT_PT_ONE);
+		dhtMessage.setKey(key);
+		dhtMessage.setValue(value);
+		return dhtMessage;
+	}
+
+	private void setCount(int count) {
+		reinitializeArray(COUNT_INSERT_PT, 4);
+		insertTextPayloadContent(count + "", COUNT_INSERT_PT);
+	}
+	
+	/** byte[] manipulation methods */
+	public String getMessageCount() {
+		String intString = new String(getPayloadAsString(4, COUNT_INSERT_PT));
+		intString = intString.replaceAll("z", "");
+		return intString;
+	}
 
 }

@@ -27,8 +27,5 @@ public class DhtRequesGlobalDumpTask extends AsyncTask<DhtMessage, Void, Void>{
 				e.printStackTrace();
 			}
 			return null;
-		}
-		
-	
-	
+		}	
 }

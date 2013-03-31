@@ -42,9 +42,9 @@ public class SimpleDhtProvider extends ContentProvider {
 	private String successorNode;
 	private String currentNode;
 	private String predecessorNode;
-	private ArrayList<DhtMessage> gloablMessages = new ArrayList<DhtMessage>();
-	private boolean publishGlobalDump = false;
-	ArrayList<String> ring = new ArrayList<String>();
+	private ArrayList<DhtMessage> globalMessages = new ArrayList<DhtMessage>();
+	private int requriedMessageCount = -1;
+	private ArrayList<String> ring = new ArrayList<String>();
 
     @Override
     public Uri insert(Uri simpleDhtUri, ContentValues contentValues) {
@@ -64,10 +64,18 @@ public class SimpleDhtProvider extends ContentProvider {
 		}
 		else if(keyValue.equals(ALL_SELECTION_GLOBAL)){
 			getLocalKeyValue(matrixCursor, "");
-			new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getGlobalDumpMessage(successorNode, currentNode));
-			while(!publishGlobalDump){
-				//wait for the responses to come on in!
+			new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getGlobalDumpMessage(successorNode, currentNode, 0));
+			while(true){
+				if(requriedMessageCount > 0 && globalMessages.size() == requriedMessageCount){
+					break;					
+				}
 			}
+			for(DhtMessage dm : globalMessages){					
+				String[] cursorRow = new String[]{dm.getKey(), dm.getValue()};
+				matrixCursor.addRow(cursorRow);
+			}
+			globalMessages.clear();
+			requriedMessageCount = -1;
 		}
 		else{
 			getLocalKeyValue(matrixCursor, keyValue);
@@ -375,11 +383,39 @@ public class SimpleDhtProvider extends ContentProvider {
 	}    
 
 	public void processGlobalRequest(DhtMessage dm) {
-		gloablMessages.add(dm);
+		int currentMsgCount = 0;
+		try {
+			currentMsgCount = Integer.parseInt(dm.getMessageCount());
+		} catch (NumberFormatException e) {
+			Log.v(TAG, "Number Format Exception");
+		}
+		Cursor resultCursor = query(Util.getProviderUri(), null, ALL_SELECTION_LOCAL, null, null);
+		currentMsgCount = resultCursor.getCount() + currentMsgCount;
+		int keyIndex = resultCursor.getColumnIndex(OnTestClickListener.KEY_FIELD);
+		int valueIndex = resultCursor.getColumnIndex(OnTestClickListener.VALUE_FIELD);
+		Log.v(TAG, "About LDump results for a GDump");
+		for (boolean hasItem = resultCursor.moveToFirst(); hasItem; hasItem = resultCursor.moveToNext()) {
+			String key = resultCursor.getString(keyIndex);
+			String value = resultCursor.getString(valueIndex);
+			Log.v(TAG, "Key and value are: " + key + " : " + value);
+			DhtMessage globalDumpResponse = DhtMessage.getGlobalDumpResponseMessage(dm.getAvdTwo(), key, value);
+			new DhtGlobalDumpResponse().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, globalDumpResponse); 
+		}
+		DhtMessage dhtMessage = DhtMessage.getGlobalDumpMessage(successorNode, dm.getAvdTwo(), currentMsgCount);
+		new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, dhtMessage);
 	}    
 
-	public void publishGlobalDumpResponses() {
-		publishGlobalDump = true;
+	public void processGlobalDumpResponse(DhtMessage dm) {
+		globalMessages.add(dm);
+	}
+
+	
+	public void processPublishGlobalDumpResponses(DhtMessage dm) {
+		try{			
+			String count = dm.getMessageCount();
+			requriedMessageCount = Integer.parseInt(count);
+		}
+		catch(NumberFormatException nfe){}
 	}
 
 
@@ -407,7 +443,7 @@ public class SimpleDhtProvider extends ContentProvider {
     	Log.v(SimpleDhtMainActivity.TAG, "Set the port number and leader status.");
     	createServer();
     	broadCastJoin();
-    	return false;
+   	return false;
     }
 
 	private void cleanProvider() {
@@ -462,7 +498,6 @@ public class SimpleDhtProvider extends ContentProvider {
         }
         return formatter.toString();
     }
-
 
 //	else{
 //	try {

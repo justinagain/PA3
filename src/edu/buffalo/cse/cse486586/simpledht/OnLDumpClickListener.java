@@ -14,6 +14,7 @@ import android.widget.TextView;
 
 public class OnLDumpClickListener implements OnClickListener {
 
+	private static int ldumpClicks = 0;
 	private static final String TAG = OnTestClickListener.class.getName();
 	private static final int TEST_CNT = 50;
 	public static final String KEY_FIELD = "key";
@@ -43,7 +44,7 @@ public class OnLDumpClickListener implements OnClickListener {
 	
 	private class Task extends AsyncTask<Void, String, Void> {
 
-		boolean firstPass = true;
+		private boolean firstPass = true;
 		
 		@Override
 		protected Void doInBackground(Void... params) {
@@ -59,9 +60,8 @@ public class OnLDumpClickListener implements OnClickListener {
 				Log.v(TAG, "Key and value are: " + key + " : " + value);
 				publishProgress(key + ":" + value + "\n");
 			}
-			if(firstPass){
-				publishProgress("");
-			}
+			ldumpClicks++;
+			publishProgress("New LDump Request - Click: " + ldumpClicks + "\n");
 			return null;
 		}
 		

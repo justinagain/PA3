@@ -15,6 +15,7 @@ import android.widget.TextView;
 public class OnGDumpClickListener implements OnClickListener {
 
 	private static final String TAG = OnTestClickListener.class.getName();
+	private static int gdumpClicks = 0;
 	private static final int TEST_CNT = 50;
 	public static final String KEY_FIELD = "key";
 	public static final String VALUE_FIELD = "value";
@@ -43,11 +44,11 @@ public class OnGDumpClickListener implements OnClickListener {
 	
 	private class Task extends AsyncTask<Void, String, Void> {
 
-		boolean firstPass = true;
+		private boolean firstPass = true;
 		
 		@Override
 		protected Void doInBackground(Void... params) {
-	    	Uri selectAllUri = buildUri("content", "edu.buffalo.cse.cse486586.simpledht.provider");
+			Uri selectAllUri = buildUri("content", "edu.buffalo.cse.cse486586.simpledht.provider");
 			Cursor resultCursor = mContentResolver.query(selectAllUri, null, SimpleDhtProvider.ALL_SELECTION_GLOBAL , null, "");
 			int keyIndex = resultCursor.getColumnIndex(OnTestClickListener.KEY_FIELD);
 			int valueIndex = resultCursor.getColumnIndex(OnTestClickListener.VALUE_FIELD);
@@ -57,11 +58,9 @@ public class OnGDumpClickListener implements OnClickListener {
 				String value = resultCursor.getString(valueIndex);
 				Log.v(TAG, "Key and value are: " + key + " : " + value);
 				publishProgress(key + ":" + value + "\n");
-			}
-			
-			if(firstPass){
-				publishProgress("");
-			}
+			}			
+			gdumpClicks++;
+			publishProgress("New GDump Request - Click: " + gdumpClicks + "\n");
 			return null;
 		}
 		

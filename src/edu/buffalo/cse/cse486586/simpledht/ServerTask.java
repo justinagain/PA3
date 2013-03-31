@@ -69,12 +69,14 @@ public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 					Log.v(TAG, "An insert request has been received.");
 					sdp.processInsertRequest(dm);					
 				}
-				else if(dm.isGloablDumpRequest() && ! dm.getAvdOne().equals(sdp.getCurrentNode())){
+				else if(dm.isGlobalDumpRequest() && ! dm.getAvdTwo().equals(sdp.getCurrentNode())){
 					sdp.processGlobalRequest(dm);
-					new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getGlobalDumpMessage(sdp.getSuccessorNode(), dm.getAvdTwo()));
 				}
-				else if(dm.isGloablDumpRequest() && dm.getAvdOne().equals(sdp.getCurrentNode())){
-					sdp.publishGlobalDumpResponses();
+				else if(dm.isGlobalDumpRequest() && dm.getAvdTwo().equals(sdp.getCurrentNode())){
+					sdp.processPublishGlobalDumpResponses(dm);
+				}
+				else if(dm.isGloablDumpResponse()){
+					sdp.processGlobalDumpResponse(dm);
 				}
 				socket.close();
 			}
