@@ -45,6 +45,8 @@ public class SimpleDhtProvider extends ContentProvider {
 	private ArrayList<DhtMessage> globalMessages = new ArrayList<DhtMessage>();
 	private int requriedMessageCount = -1;
 	private ArrayList<String> ring = new ArrayList<String>();
+	private boolean waitForResponse = false;
+	private String[] singleResponseCursorRow;
 
     @Override
     public Uri insert(Uri simpleDhtUri, ContentValues contentValues) {
@@ -64,24 +66,38 @@ public class SimpleDhtProvider extends ContentProvider {
 		}
 		else if(keyValue.equals(ALL_SELECTION_GLOBAL)){
 			getLocalKeyValue(matrixCursor, "");
-			new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getGlobalDumpMessage(successorNode, currentNode, 0));
-			while(true){
-				if(requriedMessageCount > 0 && globalMessages.size() == requriedMessageCount){
-					break;					
+			if(! currentNode.equals(successorNode) && ! currentNode.equals(predecessorNode)){
+				new DhtRequesGlobalDumpTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getGlobalDumpMessage(successorNode, currentNode, 0));
+				while(true){
+					if(requriedMessageCount > 0 && globalMessages.size() == requriedMessageCount){
+						break;					
+					}
 				}
+				for(DhtMessage dm : globalMessages){					
+					String[] cursorRow = new String[]{dm.getKey(), dm.getValue()};
+					matrixCursor.addRow(cursorRow);
+				}
+				globalMessages.clear();
+				requriedMessageCount = -1;				
 			}
-			for(DhtMessage dm : globalMessages){					
-				String[] cursorRow = new String[]{dm.getKey(), dm.getValue()};
-				matrixCursor.addRow(cursorRow);
-			}
-			globalMessages.clear();
-			requriedMessageCount = -1;
 		}
 		else{
 			getLocalKeyValue(matrixCursor, keyValue);
 			// We need to go elsewhere to find the key
 			if(matrixCursor.getCount() == 0){
-				
+				String nodeToSendQuery = "";
+				String type = evaluateHashVersionTwo(keyValue);
+				if(type.equals(PREDECESSOR_NODE)){
+					nodeToSendQuery = predecessorNode;
+				}
+				else if(type.equals(SUCCESSOR_NODE)){
+					nodeToSendQuery = successorNode;					
+				}
+				new DhtRequestSingleKeyQuery().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, DhtMessage.getSingleKeyQueryRequest(nodeToSendQuery, currentNode, keyValue));
+				waitForResponse = true;
+				while(waitForResponse){	
+				}
+				matrixCursor.addRow(singleResponseCursorRow);
 			}
 		}
 		return matrixCursor;    
@@ -498,6 +514,29 @@ public class SimpleDhtProvider extends ContentProvider {
         }
         return formatter.toString();
     }
+
+	public void processSingleQueryRequest(DhtMessage dm) {
+		String key = dm.getKeyForSingle();
+		Cursor cursor = query(Util.getProviderUri(), null, key, null, null);
+		if(cursor.getCount() == 0){
+			//send it again ...  but there are only three so forget it
+		}
+		else{
+			int keyIndex = cursor.getColumnIndex(OnTestClickListener.KEY_FIELD);
+			int valueIndex = cursor.getColumnIndex(OnTestClickListener.VALUE_FIELD);
+			cursor.moveToFirst();
+			String returnKey = cursor.getString(keyIndex);
+			String returnValue = cursor.getString(valueIndex);
+			DhtMessage dmResponse = DhtMessage.getSingleKeyResponsMessage(dm.getAvdTwo(), key, returnValue);
+			new DhtRequestInsertTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, dmResponse);
+		}
+	}
+
+	public void processSingleQueryResponse(DhtMessage dm) {
+		singleResponseCursorRow = new String[]{dm.getKey(), dm.getValue()};
+		waitForResponse = false;
+		
+	}
 
 //	else{
 //	try {

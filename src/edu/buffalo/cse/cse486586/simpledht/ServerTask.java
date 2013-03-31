@@ -78,6 +78,12 @@ public class ServerTask extends AsyncTask<ServerSocket, String, Void>{
 				else if(dm.isGloablDumpResponse()){
 					sdp.processGlobalDumpResponse(dm);
 				}
+				else if(dm.isSingleQueryRequest()){
+					sdp.processSingleQueryRequest(dm);
+				}
+				else if(dm.isSingleQueryResponse()){
+					sdp.processSingleQueryResponse(dm);
+				}
 				socket.close();
 			}
 		}

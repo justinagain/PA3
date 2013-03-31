@@ -10,12 +10,15 @@ public class DhtMessage {
 	public static final String NEW_SUCCESSOR_RESPONSE = "s";
 	public static final String QUERY = "q";
 	public static final String INSERT = "i";
+	public static final String SINGLE_QUERY_REQUEST = "z";
+	public static final String SINGLE_QUERY_RESPONSE = "b";
 	public static final int AVD_INSERT_PT_ONE = 1;
 	public static final int AVD_INSERT_PT_TWO = 5;
 	public static final int AVD_INSERT_PT_THREE = 9;
 	public static final int KEY_INSERT_PT = 5;
 	public static final int VALUE_INSERT_PT = 11;
 	public static final int COUNT_INSERT_PT = 17;
+	public static final int KEY_FOR_SINGLE_INSERT_PT = 17;
 //	public static final String TEST_TWO_BROADCAST = "c";
 //	private static final int MSG_SIZE_INSERT_PT = 11;
 //	private static final int MSG_INSERT_PT = 14;
@@ -125,7 +128,9 @@ public class DhtMessage {
 	public boolean isInsertRequest(){return determineType(INSERT);}
 	public boolean isGlobalDumpRequest() {return determineType(GLOBAL_QUERY);}
 	public boolean isGloablDumpResponse() {return determineType(GLOBAL_QUERY_RESPONSE);}
-
+	public boolean isSingleQueryRequest() {return determineType(SINGLE_QUERY_REQUEST);}
+	public boolean isSingleQueryResponse() {return determineType(SINGLE_QUERY_RESPONSE);}
+	//SINGLE_QUERY_REQUEST
 	
 	private boolean determineType(String type) {
 		String byteValue = new String(new byte[]{payload[0]});
@@ -184,4 +189,32 @@ public class DhtMessage {
 		return intString;
 	}
 
+	public static DhtMessage getSingleKeyQueryRequest(String nodeToSendQuery, String currentNode, String key) {
+		DhtMessage dhtMessage = new DhtMessage(SINGLE_QUERY_REQUEST);
+		dhtMessage.setAvd(nodeToSendQuery, DhtMessage.AVD_INSERT_PT_ONE);
+		dhtMessage.setAvd(currentNode, DhtMessage.AVD_INSERT_PT_TWO);
+		dhtMessage.setKeyForSingle(key);
+		return dhtMessage;
+	}
+
+	private void setKeyForSingle(String key) {
+		reinitializeArray(KEY_FOR_SINGLE_INSERT_PT, 6);
+		insertTextPayloadContent(key, KEY_FOR_SINGLE_INSERT_PT);
+	}
+
+	public String getKeyForSingle() {
+		String value = new String(getPayloadAsString(6, KEY_FOR_SINGLE_INSERT_PT));
+		value = value.replace("z", "");
+		return value;
+	}
+
+	public static DhtMessage getSingleKeyResponsMessage(String avdTwo, String key, String returnValue) {
+		DhtMessage dm = new DhtMessage(SINGLE_QUERY_RESPONSE);
+		dm.setAvd(avdTwo, AVD_INSERT_PT_ONE);
+		dm.setKey(key);
+		dm.setValue(returnValue);
+		return dm;
+	}
+
+	
 }
