@@ -44,7 +44,7 @@ public class SimpleDhtProvider extends ContentProvider {
 	private String predecessorNode;
 	private ArrayList<DhtMessage> gloablMessages = new ArrayList<DhtMessage>();
 	private boolean publishGlobalDump = false;
-	private HashMap<String,String> ringMap = new HashMap<String, String>();
+	ArrayList<String> ring = new ArrayList<String>();
 
     @Override
     public Uri insert(Uri simpleDhtUri, ContentValues contentValues) {
@@ -86,12 +86,8 @@ public class SimpleDhtProvider extends ContentProvider {
 			Log.v(TAG, "About to insert into a speicific file");
 			String keyValue = contentValues.get(OnTestClickListener.KEY_FIELD).toString();
 			String contentValue = contentValues.get(OnTestClickListener.VALUE_FIELD).toString();
-
-			//String type = evaluateHash(keyValue);
-
 			String type = evaluateHashVersionTwo(keyValue);
 
-			
 			if(type.equals(PREDECESSOR_NODE)){
 				Log.v(TAG, "I have a message that must be sent to the predecessor node " + predecessorNode);
 				DhtMessage message = DhtMessage.getInsertMessage(predecessorNode, keyValue, contentValue);
@@ -122,36 +118,6 @@ public class SimpleDhtProvider extends ContentProvider {
 			e.printStackTrace();
 		}
 		return success;
-	}
-
-	private String evaluateHash(String keyToInsert){
-		Log.v(TAG, "Evaluation where key should be inserted");
-		String type = "";
-		String keyHash;
-		try {
-			keyHash = genHash(keyToInsert);
-			String predecessorHash = genHash(predecessorNode);
-			String currentNodeHash = genHash(currentNode);
-			String successorHash = genHash(successorNode);
-			if( keyHash.compareTo(predecessorHash) < 1 && predecessorHash.compareTo(currentNodeHash) != 0){
-				Log.v(TAG, "Key should go to Predecessor");
-				type = PREDECESSOR_NODE;
-			}
-			else if( keyHash.compareTo(currentNodeHash) < 1 || currentNodeHash.compareTo(successorHash) == 0){
-				Log.v(TAG, "Key should go to CurrentNode");
-				type = CURRENT_NODE;
-			}
-			else if ( keyHash.compareTo(currentNodeHash) > 1 ) {
-				Log.v(TAG, "Key should go to Successor");
-				type = SUCCESSOR_NODE;
-			}
-			else{
-				Log.v(TAG, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> A key with no home!");				
-			}
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-		return type;
 	}
 
 	private String evaluateHashVersionTwo(String keyToInsert){
@@ -207,40 +173,53 @@ public class SimpleDhtProvider extends ContentProvider {
 			}
 			// CASE THREE: THERE ARE THREE OR MORE NODES
 			else{
-				// Sweet Spot Hit
-				if(keyHash.compareTo(currentNodeHash) > 0 && 
+				if(predecessorHash.compareTo(currentNodeHash) < 0 &&
+				   currentNodeHash.compareTo(successorHash) < 0){
+					
+					if(keyHash.compareTo(predecessorHash) > 0 &&
+						keyHash.compareTo(currentNodeHash) < 0){
+						type = PREDECESSOR_NODE;
+					}
+					else if(keyHash.compareTo(currentNodeHash) > 0 &&
 						keyHash.compareTo(successorHash) < 0){
-					Log.v(TAG, "CASE THREE A hit");
-					Log.v(TAG, "Key should go to CurrentNode in two node setting");
-					type = CURRENT_NODE;									
+						type = CURRENT_NODE;
+					}
+					else{
+						type = SUCCESSOR_NODE;
+					}
 				}
-				// End of ring hit no loop
-				else if(keyHash.compareTo(currentNodeHash) > 0 &&
-						currentNodeHash.compareTo(successorHash) > 0){
-					Log.v(TAG, "CASE THREE B hit");
-					Log.v(TAG, "Key should go to CurrentNode in two node setting");
-					type = CURRENT_NODE;														
+				else if(successorHash.compareTo(predecessorHash) < 0 &&
+						   predecessorHash.compareTo(currentNodeHash) < 0){
+							
+					if(keyHash.compareTo(predecessorHash) > 0 &&
+						keyHash.compareTo(currentNodeHash) < 0){
+						type = PREDECESSOR_NODE;
+					}
+					else if(keyHash.compareTo(successorHash) > 0 &&
+						keyHash.compareTo(predecessorHash) < 0){
+						type = SUCCESSOR_NODE;
+					}
+					else{
+						type = CURRENT_NODE;
+					}
 				}
-				// End of ring hit with loop
-				else if(keyHash.compareTo(currentNodeHash) < 0 &&
+				else if(currentNodeHash.compareTo(successorHash) < 0 &&
+						   successorHash.compareTo(predecessorHash) < 0){
+							
+					if(keyHash.compareTo(currentNodeHash) > 0 &&
 						keyHash.compareTo(successorHash) < 0){
-					Log.v(TAG, "CASE THREE C hit");
-					Log.v(TAG, "Key should go to CurrentNode in two node setting");
-					type = CURRENT_NODE;																			
-				}
-				// Send to predecessor
-				else if(keyHash.compareTo(currentNodeHash) < 0){
-					Log.v(TAG, "CASE THREE D hit");
-					Log.v(TAG, "Key should go to PredecessorNode in two node setting");
-					type = SUCCESSOR_NODE;														
-				}
-				// Send to successor
-				else if(keyHash.compareTo(successorHash) > 0){
-					Log.v(TAG, "CASE THREE E hit");
-					Log.v(TAG, "Key should go to SuccessorNode in two node setting");
-					type = SUCCESSOR_NODE;														
+						type = CURRENT_NODE;
+					}
+					else if(keyHash.compareTo(successorHash) > 0 &&
+						keyHash.compareTo(predecessorHash) < 0){
+						type = SUCCESSOR_NODE;
+					}
+					else{
+						type = PREDECESSOR_NODE;
+					}
 				}
 
+				
 			}
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -292,37 +271,65 @@ public class SimpleDhtProvider extends ContentProvider {
 			String pseudoCurrentNodeHash = genHash(pseudoCurrentNode);
 
 			
-			if(ringMap.keySet().size() == 0){
+			// CASE A: First Node in
+			if(ring.size() == 0){
+				Log.v(SimpleDhtMainActivity.TAG, "Case A where one exist: easy");
 				predecessor = pseudoCurrentNode;
 				successor = pseudoCurrentNode;
-				ringMap.put(pseudoCurrentNodeHash, pseudoCurrentNode);
+				ring.add(pseudoCurrentNode);
 			}
-			else if(ringMap.keySet().size() == 1){
-				predecessor = ringMap.get(ringMap.keySet().toArray()[0]);;
-				successor = ringMap.get(ringMap.keySet().toArray()[0]);;
-				ringMap.put(pseudoCurrentNodeHash, pseudoCurrentNode);
+			// CASE B: Two Nodes in
+			else if(ring.size() == 1){
+				Log.v(SimpleDhtMainActivity.TAG, "Case B where two nodes exist: easy");
+				predecessor = ring.get(0);
+				successor = ring.get(0);
+				ring.add(pseudoCurrentNode);
 			}
+			// CASE B: Three Nodes in
 			else{
-				ringMap.put(pseudoCurrentNodeHash, pseudoCurrentNode);
-				Object[] keys = ringMap.keySet().toArray();
-				Arrays.sort(keys);
-				for (int i = 0; i < keys.length; i++) {
-					if(((String)keys[i]).compareTo(pseudoCurrentNodeHash) == 0){
-						if(i == 0){
-							predecessor = ringMap.get(keys[2]);
-							successor = ringMap.get(keys[1]);							
-						}
-						else if(i == 1){
-							predecessor = ringMap.get(keys[0]);
-							successor = ringMap.get(keys[2]);							
-						}
-						else{
-							predecessor = ringMap.get(keys[1]);
-							successor = ringMap.get(keys[0]);							
-						}
-					}
+				Log.v(SimpleDhtMainActivity.TAG, "Case C where three nodes exist: moderately hard");
+				String genericHashZero = genHash(ring.get(0)); 
+				String genericHashOne = genHash(ring.get(1));
+				
+				if(pseudoCurrentNodeHash.compareTo(genericHashZero) < 0 &&
+				   pseudoCurrentNodeHash.compareTo(genericHashOne) < 0 && 
+				   genericHashZero.compareTo(genericHashOne) < 0){
+					predecessor = ring.get(1);
+					successor = ring.get(0);
 				}
-
+				else if(pseudoCurrentNodeHash.compareTo(genericHashZero) < 0 &&
+						pseudoCurrentNodeHash.compareTo(genericHashOne) < 0 && 
+						genericHashZero.compareTo(genericHashOne) > 0){
+					predecessor = ring.get(0);
+					successor = ring.get(1);
+				}
+				else if(pseudoCurrentNodeHash.compareTo(genericHashZero) > 0 &&
+						pseudoCurrentNodeHash.compareTo(genericHashOne) < 0){
+					predecessor = ring.get(0);					
+					successor = ring.get(1);
+				}
+				else if(pseudoCurrentNodeHash.compareTo(genericHashZero) < 0 &&
+						pseudoCurrentNodeHash.compareTo(genericHashOne) > 0){
+					predecessor = ring.get(1);					
+					successor = ring.get(0);
+				}
+				else if(pseudoCurrentNodeHash.compareTo(genericHashZero) > 0 &&
+						pseudoCurrentNodeHash.compareTo(genericHashOne) > 0 &&
+						genericHashZero.compareTo(genericHashOne) < 0){
+					predecessor = ring.get(1);					
+					successor = ring.get(0);
+				}
+				else if(pseudoCurrentNodeHash.compareTo(genericHashZero) > 0 &&
+						pseudoCurrentNodeHash.compareTo(genericHashOne) > 0 &&
+						genericHashZero.compareTo(genericHashOne) > 0){
+					predecessor = ring.get(0);					
+					successor = ring.get(1);
+				}
+				else{
+					int i = 0;
+					i++;
+				}
+				ring.add(pseudoCurrentNode);
 			}
 			
 			Log.v(SimpleDhtMainActivity.TAG, "Determined ordering: ");
@@ -606,5 +613,28 @@ public class SimpleDhtProvider extends ContentProvider {
 //		successorHash = nodeMap.firstKey();
 //	}
 //	String successor = (String)nodeMap.get(successorHash);
+    
+	
+//	ringMap.put(pseudoCurrentNodeHash, pseudoCurrentNode);
+//	Object[] keys = ringMap.keySet().toArray();
+//	Arrays.sort(keys);
+//	for (int i = 0; i < keys.length; i++) {
+//		if(((String)keys[i]).compareTo(pseudoCurrentNodeHash) == 0){
+//			if(i == 0){
+//				predecessor = ringMap.get(keys[2]);
+//				successor = ringMap.get(keys[1]);							
+//			}
+//			else if(i == 1){
+//				predecessor = ringMap.get(keys[0]);
+//				successor = ringMap.get(keys[2]);							
+//			}
+//			else{
+//				predecessor = ringMap.get(keys[1]);
+//				successor = ringMap.get(keys[0]);							
+//			}
+//		}
+//	}
+
+
     
 }
