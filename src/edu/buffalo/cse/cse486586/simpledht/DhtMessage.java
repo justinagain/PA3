@@ -121,7 +121,7 @@ public class DhtMessage {
 	public boolean isNewPredecessorResponse(){ return determineType(NEW_PREDECESSOR_RESPONSE); }
 	public boolean isNewSucessorResponse(){ return determineType(NEW_SUCCESSOR_RESPONSE); }
 	public boolean isInsertRequest(){return determineType(INSERT);}
-	public boolean isGloablPublishResponse() {return determineType(GLOBAL_QUERY);}
+	public boolean isGloablDumpRequest() {return determineType(GLOBAL_QUERY);}
 
 	
 	private boolean determineType(String type) {

@@ -144,31 +144,29 @@ public class SimpleDhtProvider extends ContentProvider {
 				type = CURRENT_NODE;				
 			}
 			// CASE TWO: THERE ARE TWO NODES
-			else if(predecessorHash.compareTo(currentNodeHash) != 0 && 
-					successorHash.compareTo(currentNodeHash) != 0 && 
-					predecessorHash.compareTo(successorHash) == 0){
-				if(keyHash.compareTo(currentNodeHash) > 0 && 
+			else if(predecessorHash.compareTo(currentNodeHash) != 0 &&
+					successorHash.compareTo(predecessorHash) == 0){				
+				if( currentNodeHash.compareTo(successorHash) < 0 &&
+					 currentNodeHash.compareTo(predecessorHash) < 0){						
+					if(keyHash.compareTo(currentNodeHash) > 0 &&
+						keyHash.compareTo(predecessorHash) < 0 &&
 						keyHash.compareTo(successorHash) < 0){
-					Log.v(TAG, "CASE TWO A hit");
-					Log.v(TAG, "Key should go to CurrentNode in two node setting");
-					type = CURRENT_NODE;									
+						type = CURRENT_NODE;
+					}
+					else{
+						type = SUCCESSOR_NODE;
+					}
 				}
-				else if(keyHash.compareTo(currentNodeHash) > 0 &&
-						currentNodeHash.compareTo(successorHash) > 0){
-					Log.v(TAG, "CASE TWO B hit");
-					Log.v(TAG, "Key should go to CurrentNode in two node setting");
-					type = CURRENT_NODE;														
-				}
-				else if(keyHash.compareTo(currentNodeHash) < 0 &&
-						keyHash.compareTo(successorHash) < 0){
-					Log.v(TAG, "CASE TWO C hit");
-					Log.v(TAG, "Key should go to CurrentNode in two node setting");
-					type = CURRENT_NODE;																			
-				}
-				else{
-					Log.v(TAG, "CASE TWO B hit");
-					Log.v(TAG, "Key should go to SuccessorNode in two node setting");
-					type = SUCCESSOR_NODE;														
+				else if(currentNodeHash.compareTo(successorHash) > 0 &&
+					 currentNodeHash.compareTo(predecessorHash) > 0){						
+					if(keyHash.compareTo(currentNodeHash) < 0 &&
+						keyHash.compareTo(predecessorHash) > 0 &&
+						keyHash.compareTo(successorHash) > 0){
+						type = SUCCESSOR_NODE;
+					}
+					else{
+						type = CURRENT_NODE;
+					}
 				}
 			}
 			// CASE THREE: THERE ARE THREE OR MORE NODES
@@ -218,8 +216,6 @@ public class SimpleDhtProvider extends ContentProvider {
 						type = PREDECESSOR_NODE;
 					}
 				}
-
-				
 			}
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -378,7 +374,7 @@ public class SimpleDhtProvider extends ContentProvider {
 		insert(Util.getProviderUri(), cv);
 	}    
 
-	public void processGlobalDumpResponse(DhtMessage dm) {
+	public void processGlobalRequest(DhtMessage dm) {
 		gloablMessages.add(dm);
 	}    
 
@@ -635,6 +631,32 @@ public class SimpleDhtProvider extends ContentProvider {
 //		}
 //	}
 
+//    if(predecessorHash.compareTo(currentNodeHash) != 0 && 
+//			successorHash.compareTo(currentNodeHash) != 0 && 
+//			predecessorHash.compareTo(successorHash) == 0){
+//		if(keyHash.compareTo(currentNodeHash) > 0 && 
+//				keyHash.compareTo(successorHash) < 0){
+//			Log.v(TAG, "CASE TWO A hit");
+//			Log.v(TAG, "Key should go to CurrentNode in two node setting");
+//			type = CURRENT_NODE;									
+//		}
+//		else if(keyHash.compareTo(currentNodeHash) > 0 &&
+//				currentNodeHash.compareTo(successorHash) > 0){
+//			Log.v(TAG, "CASE TWO B hit");
+//			Log.v(TAG, "Key should go to CurrentNode in two node setting");
+//			type = CURRENT_NODE;														
+//		}
+//		else if(keyHash.compareTo(currentNodeHash) < 0 &&
+//				keyHash.compareTo(successorHash) < 0){
+//			Log.v(TAG, "CASE TWO C hit");
+//			Log.v(TAG, "Key should go to CurrentNode in two node setting");
+//			type = CURRENT_NODE;																			
+//		}
+//		else{
+//			Log.v(TAG, "CASE TWO B hit");
+//			Log.v(TAG, "Key should go to SuccessorNode in two node setting");
+//			type = SUCCESSOR_NODE;														
+//		}
 
     
 }
